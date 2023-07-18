@@ -15,6 +15,14 @@ const speedBtn = document.querySelector("#speed");
 const arrayContainer = document.querySelector("#array-container");
 const algorithmSelector = document.querySelector("#algorithm");
 
+//  an event listener to the "Stop Sorting" button
+const stopSortBtn = document.querySelector("#stopSortBtn");
+stopSortBtn.onclick = (e) => {
+    stopSorting();
+};
+
+// a global variable to track whether the sorting is in progress or stopped
+let isSorting = false;
 // After loading page, this will create a random graph and render the bars
 document.addEventListener("DOMContentLoaded", function () {
   generateNewArray();
@@ -38,37 +46,44 @@ algorithmSelector.onchange = (e) => {
   algorithm = document.querySelector("#algorithm").value;
 };
 
-visualizeBtn.onclick = (e) => {
-  // Disable user inputs
-  visualizeBtn.disabled = true;
-  generateNewArrayBtn.disabled = true;
-  arraysizeSlider.disabled = true;
-  algorithmSelector.disabled = true;
-  speedBtn.disabled = true;
+visualizeBtn.onclick = async function () {
+    // Disable user inputs
+    visualizeBtn.disabled = true;
+    generateNewArrayBtn.disabled = true;
+    arraysizeSlider.disabled = true;
+    algorithmSelector.disabled = true;
+    speedBtn.disabled = true;
 
-  // Execute algorithm based on selection
-  if (algorithm == "bubblesort") {
-    bubblesort([...array]);
-  } else if (algorithm == "selectionsort") {
-    selectionsort([...array]);
-  } else if (algorithm == "insertionsort") {
-    insertionsort([...array]);
-  } else if (algorithm == "quicksort") {
-    quicksort([...array], 0, arraysize - 1);
-  } else if (algorithm == "mergesort") {
-    // First create a copy of the array to modify - preserve the original array and easier to show array changes
-    alert("Merge sort does not display properly, continue?");
-    let arr = [...array]; // Use the spread operator to create a copy of the array
-    mergesort(arr, 0, arraysize - 1); // Pass the copy of the array to mergesort
-  } else if (algorithm == "heapsort") {
-    heapsort([...array]);
-  } else {
-    console.log("no algorithm");
-  }
+    // Check if the sorting is already in progress
+    if (!isSorting) {
+        isSorting = true;
+
+        // Execute the selected algorithm based on the selection
+        if (algorithm == "bubblesort") {
+            await bubblesort([...array]);
+        } else if (algorithm == "selectionsort") {
+            await selectionsort([...array]);
+        } else if (algorithm == "insertionsort") {
+            await insertionsort([...array]);
+        } else if (algorithm == "quicksort") {
+            await quicksort([...array], 0, arraysize - 1);
+        } else if (algorithm == "mergesort") {
+            // First create a copy of the array to modify - preserve the original array and easier to show array changes
+            alert("Merge sort does not display properly, continue?");
+            let arr = [...array]; // Use the spread operator to create a copy of the array
+            await mergesort(arr, 0, arraysize - 1); // Pass the copy of the array to mergesort
+        } else if (algorithm == "heapsort") {
+            await heapsort([...array]);
+        } else {
+            console.log("no algorithm");
+        }
+
+        // Reset isSorting flag and enable user inputs
+        isSorting = false;
+        reset();
+    }
 };
-
-// Rest of the code remains the same...
-
+ 
 // FUNCTIONS
 
 function generateNewArray() {
@@ -126,19 +141,34 @@ async function swap(array, i, j) {
 async function bubblesort(array) {
     for (let i = 0; i < arraysize; i++) {
         for (let j = 0; j < arraysize - 1 - i; j++) {
+            if (!isSorting) return;
+
+            bar[j].style.backgroundColor = 'yellow';
+            bar[j + 1].style.backgroundColor = 'yellow';
+
+            await sleep(speed);
+
             if (array[j] > array[j + 1]) {
-                // Change color to represent active array
-                for (let k = 0; k < arraysize; k++) {
-                    if (k != j + 1) {
-                        bar[k].style.backgroundColor = "yellow";
-                    }
-                }
                 swap(array, j, j + 1);
-                // Highlight largest bar
-                bar[j + 1].style.backgroundColor = 'green';
+
+                // Highlight swapped bars
+                bar[j].style.backgroundColor = 'red';
+                bar[j + 1].style.backgroundColor = 'red';
+
                 await sleep(speed);
+
+                // Reset color to default
+                bar[j].style.backgroundColor = 'blue';
+                bar[j + 1].style.backgroundColor = 'blue';
             }
+
+            // Reset color to default for unswapped bars
+            bar[j].style.backgroundColor = 'blue';
+            bar[j + 1].style.backgroundColor = 'blue';
         }
+
+        // Highlight the last sorted bar in green
+        bar[arraysize - 1 - i].style.backgroundColor = 'green';
     }
     reset();
 }
@@ -147,122 +177,150 @@ async function bubblesort(array) {
 async function selectionsort(array) {
     for (let i = 0; i < arraysize - 1; i++) {
         let min = i;
+        bar[min].style.backgroundColor = 'red';
         for (let j = i + 1; j < arraysize; j++) {
-            bar[j].style.backgroundColor = 'yellow'; 
-            // If value is lower than current index, assign as current min
-            if (array[j] < array[min]) {
-                min = j;
-            }
-            bar[min].style.backgroundColor = "green"
-            // Revert color for rest of bars
-            for (let k = 0; k < arraysize; k++) {
-                if (k != min && k != j) {
-                    bar[k].style.backgroundColor = "darkgray";
-                }
-            }
+            if (!isSorting) return; // Check the flag before proceeding with each iteration
+
+            bar[j].style.backgroundColor = 'yellow';
             await sleep(speed);
+
+            // If value is lower than the current min, assign it as the new min
+            if (array[j] < array[min]) {
+                if (min !== i) {
+                    bar[min].style.backgroundColor = 'blue';
+                }
+                min = j;
+                bar[min].style.backgroundColor = 'red';
+            } else {
+                bar[j].style.backgroundColor = 'blue';
+            }
         }
-        // Swap min value with index
-        swap(array, min, i);
+
+        if (min !== i) {
+            await swap(array, min, i);
+        }
+
+        bar[min].style.backgroundColor = 'blue';
+        bar[i].style.backgroundColor = 'green'; // The sorted portion is shown in green
     }
+    bar[arraysize - 1].style.backgroundColor = 'green'; // The last element will be sorted
     reset();
 }
 
-// INSERTION SORT
+
+
+
+//INSERTION SORT
 async function insertionsort(array) {
     for (let i = 1; i < arraysize; i++) {
-        // Set i as key and j for values before current index
         let key = array[i];
-        let j= i - 1;
-        // If value at index j is larger than current key, swap values one by one until it is in place
+        let j = i - 1;
+        bar[i].style.backgroundColor = 'red'; // Highlight the element being compared
+        await sleep(speed);
+
         while (j >= 0 && array[j] > key) {
-            swap(array, j + 1, j);
-            bar[j].style.backgroundColor = "yellow";
-            for (let k = 0; k < arraysize; k++) {
-                if (k != j) {
-                    bar[k].style.backgroundColor = "darkgray";
+            if (!isSorting) return; // Check the flag before proceeding with each iteration
+
+            bar[j].style.backgroundColor = 'yellow'; // Highlight the element being moved
+            array[j + 1] = array[j];
+            bar[j + 1].style.height = array[j] * heightfactor + 'px';
+            j--;
+
+            await sleep(speed);
+
+            for (let k = i; k >= 0; k--) {
+                if (k !== j + 1) {
+                    bar[k].style.backgroundColor = 'blue';
                 }
             }
-            j--;
-            await sleep(speed);
         }
-        bar[j + 1].style.backgroundColor = "green";
+        array[j + 1] = key;
+        bar[j + 1].style.height = key * heightfactor + 'px';
+        bar[i].style.backgroundColor = 'green'; // The sorted portion is shown in green
         await sleep(speed);
     }
+    bar[arraysize - 1].style.backgroundColor = 'green'; // The last element will be sorted
     reset();
 }
+
+
 
 // Merge Sort implementation (updated)
 async function mergesort(arr, left, right) {
     if (left >= right) {
-      return;
+        return;
     }
-  
+
     const mid = Math.floor((left + right) / 2);
-  
+
     // Recursive calls for left and right halves
     await mergesort(arr, left, mid);
     await mergesort(arr, mid + 1, right);
     await merge(arr, left, mid, right);
-  }
-  
-  async function merge(arr, left, mid, right) {
+}
+
+async function merge(arr, left, mid, right) {
     const n1 = mid - left + 1;
     const n2 = right - mid;
-  
+
     const L = new Array(n1);
     const R = new Array(n2);
-  
+
     for (let i = 0; i < n1; i++) {
-      L[i] = arr[left + i];
+        L[i] = arr[left + i];
     }
     for (let j = 0; j < n2; j++) {
-      R[j] = arr[mid + 1 + j];
+        R[j] = arr[mid + 1 + j];
     }
-  
+
     let i = 0;
     let j = 0;
     let k = left;
-  
+
     while (i < n1 && j < n2) {
-      if (L[i] <= R[j]) {
-        arr[k] = L[i];
+        if (!isSorting) return; // Check the flag before proceeding with each iteration
+
+        if (L[i] <= R[j]) {
+            arr[k] = L[i];
         bar[k].style.height = arr[k] * heightfactor + "px";
-        i++;
-      } else {
-        arr[k] = R[j];
+            i++;
+        } else {
+            arr[k] = R[j];
         bar[k].style.height = arr[k] * heightfactor + "px";
-        j++;
-      }
+            j++;
+        }
       bar[k].style.backgroundColor = "yellow"; // Highlight the current compared bars
-      k++;
-      await sleep(speed);
+        k++;
+        await sleep(speed);
     }
-  
+
     while (i < n1) {
-      arr[k] = L[i];
+        if (!isSorting) return; // Check the flag before proceeding with each iteration
+
+        arr[k] = L[i];
       bar[k].style.height = arr[k] * heightfactor + "px";
       bar[k].style.backgroundColor = "yellow"; // Highlight the current compared bars
-      i++;
-      k++;
-      await sleep(speed);
+        i++;
+        k++;
+        await sleep(speed);
     }
-  
+
     while (j < n2) {
-      arr[k] = R[j];
+        if (!isSorting) return; // Check the flag before proceeding with each iteration
+
+        arr[k] = R[j];
       bar[k].style.height = arr[k] * heightfactor + "px";
       bar[k].style.backgroundColor = "yellow"; // Highlight the current compared bars
-      j++;
-      k++;
-      await sleep(speed);
+        j++;
+        k++;
+        await sleep(speed);
     }
-  
+
     // Reset color of sorted bars
     for (let p = left; p <= right; p++) {
       bar[p].style.backgroundColor = "lightgreen";
     }
-    reset();
-  }
+}
 
 
 
@@ -285,7 +343,9 @@ async function heapsort(array) {
         await heapify(array, arraysize, i);
     }
     // Extract each element one by one
-    for (let i = arraysize - 1; i >=  0; i--) {
+    for (let i = arraysize - 1; i >= 0; i--) {
+        if (!isSorting) break; // Check the flag before proceeding with each iteration
+
         swap(array, 0, i); // Swap root with i
         bar[i].style.backgroundColor = "lightgreen";
         await heapify(array, i, 0);
@@ -298,7 +358,7 @@ async function heapify(array, n, i) {
     let parent = i;
     let left = 2 * i + 1;
     let right = 2 * i + 2;
-    // Modify heap, setting min as parent
+    // Modify heap, setting max as parent
     if (left < n && array[left] > array[parent]) {
         parent = left;
     }
@@ -306,7 +366,7 @@ async function heapify(array, n, i) {
         parent = right;
     }
     // Perform swap and heapify
-    if (parent != i) {
+    if (parent !== i) {
         swap(array, parent, i);
         bar[parent].style.backgroundColor = "yellow";
         bar[i].style.backgroundColor = "yellow";
@@ -324,7 +384,7 @@ async function quicksort(array, start, end) {
         await quicksort(array, start, pivot - 1);
         await quicksort(array, pivot + 1, end);
     }
-    if (isSorted(array) == true) reset();
+    if (isSorted(array) === true) reset();
 }
 
 async function partition(array, start, end) {
@@ -333,6 +393,7 @@ async function partition(array, start, end) {
     let j = start;
     bar[pivot].style.backgroundColor = "red";
     while (j < pivot) {
+        if (!isSorting) return; // Check the flag before proceeding with each iteration
         if (array[j] > array[pivot]) {
             j++;
         }
@@ -365,4 +426,7 @@ function isSorted(array) {
       previousNo = number;
     }
     return true;
+}
+function stopSorting() {
+    isSorting = false;
 }
