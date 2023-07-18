@@ -69,7 +69,6 @@ visualizeBtn.onclick = async function () {
             await quicksort([...array], 0, arraysize - 1);
         } else if (algorithm == "mergesort") {
             // First create a copy of the array to modify - preserve the original array and easier to show array changes
-            alert("Merge sort does not display properly, continue?");
             let arr = [...array]; // Use the spread operator to create a copy of the array
             await mergesort(arr, 0, arraysize - 1); // Pass the copy of the array to mergesort
         } else if (algorithm == "heapsort") {
